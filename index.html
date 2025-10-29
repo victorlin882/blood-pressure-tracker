@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blood Pressure & Pulse Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🩺 Blood Pressure & Pulse Tracker</h1>
+            <p>Monitor your health with ease</p>
+        </header>
+
+        <div class="input-section">
+            <h2>Add New Reading</h2>
+            <form id="bpForm" class="input-form">
+                <div class="form-group">
+                    <label for="upperPressure">Upper Pressure (Systolic):</label>
+                    <input type="number" id="upperPressure" name="upperPressure" min="50" max="300" required>
+                    <span class="unit">mmHg</span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="lowerPressure">Lower Pressure (Diastolic):</label>
+                    <input type="number" id="lowerPressure" name="lowerPressure" min="30" max="200" required>
+                    <span class="unit">mmHg</span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="pulseRate">Pulse Rate:</label>
+                    <input type="number" id="pulseRate" name="pulseRate" min="30" max="200" required>
+                    <span class="unit">bpm</span>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Add Reading</button>
+                    <button type="button" id="clearBtn" class="btn btn-secondary">Clear</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="filter-section">
+            <h2>Filter Records</h2>
+            <div class="filter-form">
+                <div class="form-group">
+                    <label for="fromDate">From Date:</label>
+                    <input type="date" id="fromDate" name="fromDate">
+                </div>
+                <div class="form-group">
+                    <label for="toDate">To Date:</label>
+                    <input type="date" id="toDate" name="toDate">
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="filterBtn" class="btn btn-primary">Filter</button>
+                    <button type="button" id="clearFilterBtn" class="btn btn-secondary">Clear Filter</button>
+                    <button type="button" id="printBtn" class="btn btn-print">🖨️ Print</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="history-section">
+            <h2>Reading History</h2>
+            <div id="noDataMessage" class="no-data">
+                <p>No readings recorded yet. Add your first reading above!</p>
+            </div>
+            <div id="historyList" class="history-list"></div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Reading</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="editForm" class="input-form">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label for="editUpperPressure">Upper Pressure (Systolic):</label>
+                    <input type="number" id="editUpperPressure" name="upperPressure" min="50" max="300" required>
+                    <span class="unit">mmHg</span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editLowerPressure">Lower Pressure (Diastolic):</label>
+                    <input type="number" id="editLowerPressure" name="lowerPressure" min="30" max="200" required>
+                    <span class="unit">mmHg</span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editPulseRate">Pulse Rate:</label>
+                    <input type="number" id="editPulseRate" name="pulseRate" min="30" max="200" required>
+                    <span class="unit">bpm</span>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" id="cancelEdit" class="btn btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
+
+
+

@@ -1,0 +1,64 @@
+QUICK RAILWAY DEPLOYMENT STEPS
+===============================
+
+BEFORE YOU START:
+1. Install Git: https://git-scm.com/download/win
+2. Create GitHub account: https://github.com
+3. Sign up Railway: https://railway.app (use GitHub login)
+
+STEP 1: PUSH TO GITHUB
+-----------------------
+1. Open terminal in your project folder (C:\Users\Victor\test)
+2. Run these commands one by one:
+
+   git init
+   git add .
+   git commit -m "Initial commit"
+   
+3. Create a new repository on GitHub (https://github.com/new)
+   - Name: blood-pressure-tracker
+   - Public or Private
+   - Don't add README (we already have files)
+   
+4. Copy the commands GitHub shows you, something like:
+   git remote add origin https://github.com/YOUR_USERNAME/blood-pressure-tracker.git
+   git branch -M main
+   git push -u origin main
+
+STEP 2: DEPLOY TO RAILWAY
+--------------------------
+1. Go to Railway dashboard: https://railway.app
+2. Click "New Project"
+3. Select "Deploy from GitHub repo"
+4. Choose your "blood-pressure-tracker" repository
+5. Wait 2-3 minutes for deployment
+
+STEP 3: ADD MYSQL DATABASE
+---------------------------
+1. In your Railway project, click "+ New"
+2. Select "Database" → "Add MySQL"
+3. Railway automatically connects it to your app
+
+STEP 4: GET YOUR URL
+--------------------
+1. Click on your app service
+2. Go to "Settings"
+3. Under "Networking", click "Generate Domain"
+4. You'll get a URL like: https://your-app.up.railway.app
+
+STEP 5: TEST IT!
+----------------
+1. Open the Railway URL in your browser
+2. Your app should work!
+3. Access from any device, anywhere!
+
+COST:
+-----
+- Free $5 credit per month
+- Your app uses ~$4-6/month
+- First month FREE!
+
+NEED HELP?
+----------
+See RAILWAY-DEPLOYMENT.md for detailed instructions with screenshots and troubleshooting!
+
