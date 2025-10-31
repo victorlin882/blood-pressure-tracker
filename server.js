@@ -34,6 +34,10 @@ const promisePool = pool.promise();
         const connection = await promisePool.getConnection();
         console.log('Connected to MySQL database');
         
+        // Set timezone to Hong Kong (UTC+8)
+        await connection.query("SET time_zone = '+08:00'");
+        console.log('Timezone set to Hong Kong (UTC+8)');
+        
         // Create table if it doesn't exist
         const createTableQuery = `
             CREATE TABLE IF NOT EXISTS blood_pressure (
@@ -96,9 +100,10 @@ app.get('/api/readings', (req, res) => {
 app.post('/api/readings', (req, res) => {
     const { id, upperPressure, lowerPressure, pulseRate, inputDate, inputTime } = req.body;
     
+    // Set timezone to Hong Kong (UTC+8) and insert with explicit created_at
     const query = `
-        INSERT INTO blood_pressure (id, upper_pressure, lower_pressure, pulse_rate, input_date, input_time)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO blood_pressure (id, upper_pressure, lower_pressure, pulse_rate, input_date, input_time, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
     `;
     
     promisePool.query(query, [id, upperPressure, lowerPressure, pulseRate, inputDate, inputTime])
