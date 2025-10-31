@@ -125,6 +125,30 @@ class BloodPressureTracker {
         });
     }
 
+    // Get Hong Kong date and time
+    getHongKongDateTime() {
+        const now = new Date();
+        
+        // Convert to Hong Kong timezone (Asia/Hong_Kong, UTC+8)
+        const hkDateString = now.toLocaleString('en-CA', { 
+            timeZone: 'Asia/Hong_Kong',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        
+        // Format: "YYYY-MM-DD, HH:MM:SS"
+        const [datePart, timePart] = hkDateString.split(', ');
+        const inputDate = datePart; // Already in YYYY-MM-DD format
+        const inputTime = timePart; // Already in HH:MM:SS format
+        
+        return { inputDate, inputTime };
+    }
+
     // Add a new reading
     async addReading() {
         const upperPressure = parseInt(document.getElementById('upperPressure').value);
@@ -136,9 +160,8 @@ class BloodPressureTracker {
             return;
         }
 
-        const now = new Date();
-        const inputDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
-        const inputTime = now.toTimeString().split(' ')[0]; // HH:MM:SS
+        // Get Hong Kong date and time
+        const { inputDate, inputTime } = this.getHongKongDateTime();
 
         const reading = {
             id: Date.now(),
