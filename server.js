@@ -11,45 +11,49 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname)); // Serve static files
 
-// MySQL Connection Configuration
+// MySQL Connection Pool Configuration (better for Railway)
 // Use environment variables for Railway, fallback to local for development
-const db = mysql.createConnection({
+const pool = mysql.createPool({
     host: process.env.MYSQLHOST || 'localhost',
     user: process.env.MYSQLUSER || 'root',
     password: process.env.MYSQLPASSWORD || '',
     database: process.env.MYSQLDATABASE || 'blood_pressure_tracker',
-    port: process.env.MYSQLPORT || 3306
+    port: process.env.MYSQLPORT || 3306,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    reconnect: true
 });
 
-// Connect to MySQL
-db.connect((err) => {
-    if (err) {
-        console.error('Error connecting to MySQL:', err);
-        return;
+// Create promise-based pool
+const promisePool = pool.promise();
+
+// Test connection and create table
+(async () => {
+    try {
+        const connection = await promisePool.getConnection();
+        console.log('Connected to MySQL database');
+        
+        // Create table if it doesn't exist
+        const createTableQuery = `
+            CREATE TABLE IF NOT EXISTS blood_pressure (
+                id BIGINT PRIMARY KEY,
+                upper_pressure INT NOT NULL,
+                lower_pressure INT NOT NULL,
+                pulse_rate INT NOT NULL,
+                input_date DATE NOT NULL,
+                input_time TIME NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `;
+        
+        await connection.query(createTableQuery);
+        console.log('Table ready');
+        connection.release();
+    } catch (err) {
+        console.error('Database initialization error:', err);
     }
-    console.log('Connected to MySQL database');
-    
-    // Create table if it doesn't exist
-    const createTableQuery = `
-        CREATE TABLE IF NOT EXISTS blood_pressure (
-            id BIGINT PRIMARY KEY,
-            upper_pressure INT NOT NULL,
-            lower_pressure INT NOT NULL,
-            pulse_rate INT NOT NULL,
-            input_date DATE NOT NULL,
-            input_time TIME NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    `;
-    
-    db.query(createTableQuery, (err) => {
-        if (err) {
-            console.error('Error creating table:', err);
-        } else {
-            console.log('Table ready');
-        }
-    });
-});
+})();
 
 // API Routes
 
@@ -67,25 +71,25 @@ app.get('/api/readings', (req, res) => {
     
     query += ' ORDER BY input_date DESC, input_time DESC';
     
-    db.query(query, queryParams, (err, results) => {
-        if (err) {
+    promisePool.query(query, queryParams)
+        .then(([results]) => {
+            // Convert snake_case to camelCase for frontend
+            const readings = results.map(row => ({
+                id: row.id,
+                upperPressure: row.upper_pressure,
+                lowerPressure: row.lower_pressure,
+                pulseRate: row.pulse_rate,
+                inputDate: row.input_date,
+                inputTime: row.input_time,
+                dateTime: `${row.input_date} ${row.input_time}`
+            }));
+            
+            res.json(readings);
+        })
+        .catch((err) => {
             console.error('Error fetching readings:', err);
-            return res.status(500).json({ error: 'Failed to fetch readings' });
-        }
-        
-        // Convert snake_case to camelCase for frontend
-        const readings = results.map(row => ({
-            id: row.id,
-            upperPressure: row.upper_pressure,
-            lowerPressure: row.lower_pressure,
-            pulseRate: row.pulse_rate,
-            inputDate: row.input_date,
-            inputTime: row.input_time,
-            dateTime: `${row.input_date} ${row.input_time}`
-        }));
-        
-        res.json(readings);
-    });
+            res.status(500).json({ error: 'Failed to fetch readings' });
+        });
 });
 
 // Add a new reading
@@ -97,17 +101,17 @@ app.post('/api/readings', (req, res) => {
         VALUES (?, ?, ?, ?, ?, ?)
     `;
     
-    db.query(query, [id, upperPressure, lowerPressure, pulseRate, inputDate, inputTime], (err, result) => {
-        if (err) {
+    promisePool.query(query, [id, upperPressure, lowerPressure, pulseRate, inputDate, inputTime])
+        .then(([result]) => {
+            res.status(201).json({ 
+                message: 'Reading added successfully',
+                id: id
+            });
+        })
+        .catch((err) => {
             console.error('Error adding reading:', err);
-            return res.status(500).json({ error: 'Failed to add reading' });
-        }
-        
-        res.status(201).json({ 
-            message: 'Reading added successfully',
-            id: id
+            res.status(500).json({ error: 'Failed to add reading' });
         });
-    });
 });
 
 // Update a reading
@@ -121,18 +125,17 @@ app.put('/api/readings/:id', (req, res) => {
         WHERE id = ?
     `;
     
-    db.query(query, [upperPressure, lowerPressure, pulseRate, id], (err, result) => {
-        if (err) {
+    promisePool.query(query, [upperPressure, lowerPressure, pulseRate, id])
+        .then(([result]) => {
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: 'Reading not found' });
+            }
+            res.json({ message: 'Reading updated successfully' });
+        })
+        .catch((err) => {
             console.error('Error updating reading:', err);
-            return res.status(500).json({ error: 'Failed to update reading' });
-        }
-        
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Reading not found' });
-        }
-        
-        res.json({ message: 'Reading updated successfully' });
-    });
+            res.status(500).json({ error: 'Failed to update reading' });
+        });
 });
 
 // Delete a reading
@@ -141,18 +144,17 @@ app.delete('/api/readings/:id', (req, res) => {
     
     const query = 'DELETE FROM blood_pressure WHERE id = ?';
     
-    db.query(query, [id], (err, result) => {
-        if (err) {
+    promisePool.query(query, [id])
+        .then(([result]) => {
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: 'Reading not found' });
+            }
+            res.json({ message: 'Reading deleted successfully' });
+        })
+        .catch((err) => {
             console.error('Error deleting reading:', err);
-            return res.status(500).json({ error: 'Failed to delete reading' });
-        }
-        
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Reading not found' });
-        }
-        
-        res.json({ message: 'Reading deleted successfully' });
-    });
+            res.status(500).json({ error: 'Failed to delete reading' });
+        });
 });
 
 // Start server
