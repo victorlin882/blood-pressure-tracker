@@ -9,6 +9,19 @@ class BloodPressureTracker {
         this.initializeEventListeners();
         this.setDefaultFilterDates();
         this.loadReadings();
+        // Focus on upper pressure field when page loads
+        this.focusUpperPressure();
+    }
+
+    // Focus on the upper pressure input field
+    focusUpperPressure() {
+        // Use setTimeout to ensure field is ready (especially after form reset)
+        setTimeout(() => {
+            const upperPressureField = document.getElementById('upperPressure');
+            if (upperPressureField) {
+                upperPressureField.focus();
+            }
+        }, 10);
     }
 
     // Set default filter dates (today and 2 weeks before)
@@ -206,6 +219,8 @@ class BloodPressureTracker {
     // Clear the input form
     clearForm() {
         document.getElementById('bpForm').reset();
+        // Focus on upper pressure field after clearing
+        this.focusUpperPressure();
     }
 
     // Format date as dd/mm/yy
