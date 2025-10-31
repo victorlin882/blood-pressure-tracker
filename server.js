@@ -47,11 +47,28 @@ const promisePool = pool.promise();
                 pulse_rate INT NOT NULL,
                 input_date DATE NOT NULL,
                 input_time TIME NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at DATETIME NOT NULL
             )
         `;
         
         await connection.query(createTableQuery);
+        
+        // Check if created_at is TIMESTAMP and alter to DATETIME if needed
+        const checkColumnQuery = `
+            SELECT COLUMN_TYPE 
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_SCHEMA = DATABASE() 
+            AND TABLE_NAME = 'blood_pressure' 
+            AND COLUMN_NAME = 'created_at'
+        `;
+        const [columns] = await connection.query(checkColumnQuery);
+        
+        if (columns.length > 0 && columns[0].COLUMN_TYPE.includes('timestamp')) {
+            console.log('Converting created_at from TIMESTAMP to DATETIME...');
+            await connection.query('ALTER TABLE blood_pressure MODIFY created_at DATETIME NOT NULL');
+            console.log('Column converted to DATETIME');
+        }
+        
         console.log('Table ready');
         connection.release();
     } catch (err) {
@@ -81,29 +98,20 @@ app.get('/api/readings', (req, res) => {
         .then(([results]) => {
             // Convert snake_case to camelCase for frontend
             const readings = results.map(row => {
-                // Convert created_at to Hong Kong time if it exists
+                // created_at is now DATETIME (stores exactly what we insert, no timezone conversion)
                 let createdAt = row.created_at;
                 if (createdAt) {
-                    // If it's a Date object, format it as Hong Kong time
-                    const date = new Date(createdAt);
-                    const hkFormatter = new Intl.DateTimeFormat('en-CA', {
-                        timeZone: 'Asia/Hong_Kong',
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                        hour12: false
-                    });
-                    const parts = hkFormatter.formatToParts(date);
-                    const year = parts.find(p => p.type === 'year').value;
-                    const month = parts.find(p => p.type === 'month').value;
-                    const day = parts.find(p => p.type === 'day').value;
-                    const hour = parts.find(p => p.type === 'hour').value;
-                    const minute = parts.find(p => p.type === 'minute').value;
-                    const second = parts.find(p => p.type === 'second').value;
-                    createdAt = `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+                    // Format as string if it's a Date object
+                    if (createdAt instanceof Date) {
+                        const year = createdAt.getFullYear();
+                        const month = String(createdAt.getMonth() + 1).padStart(2, '0');
+                        const day = String(createdAt.getDate()).padStart(2, '0');
+                        const hour = String(createdAt.getHours()).padStart(2, '0');
+                        const minute = String(createdAt.getMinutes()).padStart(2, '0');
+                        const second = String(createdAt.getSeconds()).padStart(2, '0');
+                        createdAt = `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+                    }
+                    // If it's already a string, use it as-is (should already be in HK time)
                 }
                 
                 return {
@@ -113,7 +121,7 @@ app.get('/api/readings', (req, res) => {
                     pulseRate: row.pulse_rate,
                     inputDate: row.input_date,
                     inputTime: row.input_time,
-                    createdAt: createdAt,
+                    createdAt: createdAt || null,
                     dateTime: `${row.input_date} ${row.input_time}`
                 };
             });
@@ -133,31 +141,20 @@ app.post('/api/readings', (req, res) => {
     // Calculate Hong Kong timestamp for created_at (UTC+8)
     const now = new Date();
     
-    // Format date in Hong Kong timezone using Intl.DateTimeFormat
-    const hkFormatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Asia/Hong_Kong',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-    });
+    // Get Hong Kong time components
+    const hkYear = now.toLocaleString('en-US', { timeZone: 'Asia/Hong_Kong', year: 'numeric' });
+    const hkMonth = String(now.toLocaleString('en-US', { timeZone: 'Asia/Hong_Kong', month: '2-digit' })).padStart(2, '0');
+    const hkDay = String(now.toLocaleString('en-US', { timeZone: 'Asia/Hong_Kong', day: '2-digit' })).padStart(2, '0');
+    const hkHour = String(now.toLocaleString('en-US', { timeZone: 'Asia/Hong_Kong', hour: '2-digit', hour12: false })).padStart(2, '0');
+    const hkMinute = String(now.toLocaleString('en-US', { timeZone: 'Asia/Hong_Kong', minute: '2-digit' })).padStart(2, '0');
+    const hkSecond = String(now.toLocaleString('en-US', { timeZone: 'Asia/Hong_Kong', second: '2-digit' })).padStart(2, '0');
     
-    // Format as: "YYYY-MM-DD, HH, MM, SS"
-    const parts = hkFormatter.formatToParts(now);
-    const year = parts.find(p => p.type === 'year').value;
-    const month = parts.find(p => p.type === 'month').value;
-    const day = parts.find(p => p.type === 'day').value;
-    const hour = parts.find(p => p.type === 'hour').value;
-    const minute = parts.find(p => p.type === 'minute').value;
-    const second = parts.find(p => p.type === 'second').value;
+    // Format: "YYYY-MM-DD HH:mm:ss" in Hong Kong time
+    const hkTimestamp = `${hkYear}-${hkMonth}-${hkDay} ${hkHour}:${hkMinute}:${hkSecond}`;
     
-    // Format: "YYYY-MM-DD HH:mm:ss"
-    const hkTimestamp = `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+    console.log('Inserting with Hong Kong timestamp:', hkTimestamp);
     
-    // Set timezone to Hong Kong and insert with explicit Hong Kong timestamp
+    // Use DATETIME format explicitly - insert as string in Hong Kong time
     const query = `
         INSERT INTO blood_pressure (id, upper_pressure, lower_pressure, pulse_rate, input_date, input_time, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
