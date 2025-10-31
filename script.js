@@ -324,18 +324,27 @@ class BloodPressureTracker {
         return document.createElement('div');
     }
 
-    // Get blood pressure category
+    // Get blood pressure category (AHA/ACC Guidelines)
     getBloodPressureCategory(upper, lower) {
+        // Normal: < 120/80
         if (upper < 120 && lower < 80) {
             return { text: 'Normal', class: 'normal' };
-        } else if (upper < 130 && lower < 80) {
+        }
+        // Elevated: 120-129/< 80
+        else if (upper >= 120 && upper < 130 && lower < 80) {
             return { text: 'Elevated', class: 'elevated' };
-        } else if (upper < 140 || lower < 90) {
+        }
+        // High Stage 1: 130-139 OR 80-89
+        else if ((upper >= 130 && upper < 140) || (lower >= 80 && lower < 90)) {
             return { text: 'High Stage 1', class: 'high' };
-        } else if (upper < 180 || lower < 120) {
-            return { text: 'High Stage 2', class: 'high' };
-        } else {
+        }
+        // Crisis: >= 180 OR >= 120
+        else if (upper >= 180 || lower >= 120) {
             return { text: 'Crisis', class: 'crisis' };
+        }
+        // High Stage 2: >= 140 OR >= 90 (but not crisis)
+        else {
+            return { text: 'High Stage 2', class: 'high' };
         }
     }
 
