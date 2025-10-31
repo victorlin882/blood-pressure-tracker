@@ -79,6 +79,16 @@
             <form id="editForm" class="input-form">
                 <input type="hidden" id="editId">
                 <div class="form-group">
+                    <label for="editInputDate">Date:</label>
+                    <input type="date" id="editInputDate" name="inputDate" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editInputTime">Time:</label>
+                    <input type="time" id="editInputTime" name="inputTime" required>
+                </div>
+                
+                <div class="form-group">
                     <label for="editUpperPressure">Upper Pressure (Systolic):</label>
                     <input type="number" id="editUpperPressure" name="upperPressure" min="50" max="300" required>
                     <span class="unit">mmHg</span>

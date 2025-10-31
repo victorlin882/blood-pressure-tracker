@@ -177,15 +177,15 @@ app.post('/api/readings', (req, res) => {
 // Update a reading
 app.put('/api/readings/:id', (req, res) => {
     const { id } = req.params;
-    const { upperPressure, lowerPressure, pulseRate } = req.body;
+    const { inputDate, inputTime, upperPressure, lowerPressure, pulseRate } = req.body;
     
     const query = `
         UPDATE blood_pressure 
-        SET upper_pressure = ?, lower_pressure = ?, pulse_rate = ?
+        SET input_date = ?, input_time = ?, upper_pressure = ?, lower_pressure = ?, pulse_rate = ?
         WHERE id = ?
     `;
     
-    promisePool.query(query, [upperPressure, lowerPressure, pulseRate, id])
+    promisePool.query(query, [inputDate, inputTime, upperPressure, lowerPressure, pulseRate, id])
         .then(([result]) => {
             if (result.affectedRows === 0) {
                 return res.status(404).json({ error: 'Reading not found' });

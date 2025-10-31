@@ -365,6 +365,10 @@ class BloodPressureTracker {
         if (!reading) return;
 
         document.getElementById('editId').value = reading.id;
+        document.getElementById('editInputDate').value = reading.inputDate; // YYYY-MM-DD format
+        // Format time from HH:MM:SS to HH:MM for time input
+        const timeValue = reading.inputTime.split(':').slice(0, 2).join(':');
+        document.getElementById('editInputTime').value = timeValue;
         document.getElementById('editUpperPressure').value = reading.upperPressure;
         document.getElementById('editLowerPressure').value = reading.lowerPressure;
         document.getElementById('editPulseRate').value = reading.pulseRate;
@@ -375,6 +379,8 @@ class BloodPressureTracker {
     // Update a reading
     async updateReading() {
         const id = parseInt(document.getElementById('editId').value);
+        const inputDate = document.getElementById('editInputDate').value;
+        const inputTime = document.getElementById('editInputTime').value;
         const upperPressure = parseInt(document.getElementById('editUpperPressure').value);
         const lowerPressure = parseInt(document.getElementById('editLowerPressure').value);
         const pulseRate = parseInt(document.getElementById('editPulseRate').value);
@@ -383,6 +389,9 @@ class BloodPressureTracker {
             return;
         }
 
+        // Format time to include seconds (HH:MM -> HH:MM:SS)
+        const timeWithSeconds = inputTime + ':00';
+
         try {
             const response = await fetch(`${API_URL}/readings/${id}`, {
                 method: 'PUT',
@@ -390,6 +399,8 @@ class BloodPressureTracker {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
+                    inputDate,
+                    inputTime: timeWithSeconds,
                     upperPressure,
                     lowerPressure,
                     pulseRate
