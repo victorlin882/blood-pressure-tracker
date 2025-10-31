@@ -100,13 +100,22 @@ app.get('/api/readings', (req, res) => {
 app.post('/api/readings', (req, res) => {
     const { id, upperPressure, lowerPressure, pulseRate, inputDate, inputTime } = req.body;
     
-    // Set timezone to Hong Kong (UTC+8) and insert with explicit created_at
+    // Calculate Hong Kong timestamp for created_at (UTC+8)
+    const now = new Date();
+    // Convert to Hong Kong time string
+    const hkDateString = now.toLocaleString('sv-SE', { 
+        timeZone: 'Asia/Hong_Kong'
+    });
+    // Format: "YYYY-MM-DD HH:mm:ss"
+    const hkTimestamp = hkDateString.replace('T', ' ').slice(0, 19);
+    
+    // Insert with explicit Hong Kong timestamp
     const query = `
         INSERT INTO blood_pressure (id, upper_pressure, lower_pressure, pulse_rate, input_date, input_time, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     
-    promisePool.query(query, [id, upperPressure, lowerPressure, pulseRate, inputDate, inputTime])
+    promisePool.query(query, [id, upperPressure, lowerPressure, pulseRate, inputDate, inputTime, hkTimestamp])
         .then(([result]) => {
             res.status(201).json({ 
                 message: 'Reading added successfully',
