@@ -75,18 +75,48 @@ app.get('/api/readings', (req, res) => {
     
     query += ' ORDER BY input_date DESC, input_time DESC';
     
-    promisePool.query(query, queryParams)
+    // Set timezone to Hong Kong before querying
+    promisePool.query("SET time_zone = '+08:00'")
+        .then(() => promisePool.query(query, queryParams))
         .then(([results]) => {
             // Convert snake_case to camelCase for frontend
-            const readings = results.map(row => ({
-                id: row.id,
-                upperPressure: row.upper_pressure,
-                lowerPressure: row.lower_pressure,
-                pulseRate: row.pulse_rate,
-                inputDate: row.input_date,
-                inputTime: row.input_time,
-                dateTime: `${row.input_date} ${row.input_time}`
-            }));
+            const readings = results.map(row => {
+                // Convert created_at to Hong Kong time if it exists
+                let createdAt = row.created_at;
+                if (createdAt) {
+                    // If it's a Date object, format it as Hong Kong time
+                    const date = new Date(createdAt);
+                    const hkFormatter = new Intl.DateTimeFormat('en-CA', {
+                        timeZone: 'Asia/Hong_Kong',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    });
+                    const parts = hkFormatter.formatToParts(date);
+                    const year = parts.find(p => p.type === 'year').value;
+                    const month = parts.find(p => p.type === 'month').value;
+                    const day = parts.find(p => p.type === 'day').value;
+                    const hour = parts.find(p => p.type === 'hour').value;
+                    const minute = parts.find(p => p.type === 'minute').value;
+                    const second = parts.find(p => p.type === 'second').value;
+                    createdAt = `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+                }
+                
+                return {
+                    id: row.id,
+                    upperPressure: row.upper_pressure,
+                    lowerPressure: row.lower_pressure,
+                    pulseRate: row.pulse_rate,
+                    inputDate: row.input_date,
+                    inputTime: row.input_time,
+                    createdAt: createdAt,
+                    dateTime: `${row.input_date} ${row.input_time}`
+                };
+            });
             
             res.json(readings);
         })
@@ -102,20 +132,39 @@ app.post('/api/readings', (req, res) => {
     
     // Calculate Hong Kong timestamp for created_at (UTC+8)
     const now = new Date();
-    // Convert to Hong Kong time string
-    const hkDateString = now.toLocaleString('sv-SE', { 
-        timeZone: 'Asia/Hong_Kong'
-    });
-    // Format: "YYYY-MM-DD HH:mm:ss"
-    const hkTimestamp = hkDateString.replace('T', ' ').slice(0, 19);
     
-    // Insert with explicit Hong Kong timestamp
+    // Format date in Hong Kong timezone using Intl.DateTimeFormat
+    const hkFormatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Hong_Kong',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    });
+    
+    // Format as: "YYYY-MM-DD, HH, MM, SS"
+    const parts = hkFormatter.formatToParts(now);
+    const year = parts.find(p => p.type === 'year').value;
+    const month = parts.find(p => p.type === 'month').value;
+    const day = parts.find(p => p.type === 'day').value;
+    const hour = parts.find(p => p.type === 'hour').value;
+    const minute = parts.find(p => p.type === 'minute').value;
+    const second = parts.find(p => p.type === 'second').value;
+    
+    // Format: "YYYY-MM-DD HH:mm:ss"
+    const hkTimestamp = `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+    
+    // Set timezone to Hong Kong and insert with explicit Hong Kong timestamp
     const query = `
         INSERT INTO blood_pressure (id, upper_pressure, lower_pressure, pulse_rate, input_date, input_time, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     
-    promisePool.query(query, [id, upperPressure, lowerPressure, pulseRate, inputDate, inputTime, hkTimestamp])
+    promisePool.query("SET time_zone = '+08:00'")
+        .then(() => promisePool.query(query, [id, upperPressure, lowerPressure, pulseRate, inputDate, inputTime, hkTimestamp]))
         .then(([result]) => {
             res.status(201).json({ 
                 message: 'Reading added successfully',
