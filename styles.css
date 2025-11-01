@@ -308,17 +308,33 @@ header p {
     height: 100%;
     background-color: rgba(0,0,0,0.5);
     backdrop-filter: blur(5px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* Prevent body scroll when modal is open */
+    padding: 20px 0;
+}
+
+body.modal-open {
+    overflow: hidden;
 }
 
 .modal-content {
     background-color: white;
-    margin: 5% auto;
+    margin: 20px auto;
     padding: 0;
     border-radius: 15px;
     width: 90%;
     max-width: 500px;
+    height: auto;
+    min-height: 400px;
+    max-height: calc(100vh - 40px);
     box-shadow: 0 20px 60px rgba(0,0,0,0.3);
     animation: modalSlideIn 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    /* Ensure modal doesn't exceed viewport */
 }
 
 @keyframes modalSlideIn {
@@ -341,6 +357,7 @@ header p {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border-radius: 15px 15px 0 0;
+    flex-shrink: 0; /* Don't shrink header */
 }
 
 .modal-header h3 {
@@ -362,6 +379,52 @@ header p {
 
 .modal .input-form {
     padding: 30px;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    flex: 1;
+    min-height: 0;
+    /* Ensure form can scroll with visible scrollbar */
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #667eea #f0f0f0;
+}
+
+.modal .input-form::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal .input-form::-webkit-scrollbar-track {
+    background: #f0f0f0;
+    border-radius: 4px;
+}
+
+.modal .input-form::-webkit-scrollbar-thumb {
+    background: #667eea;
+    border-radius: 4px;
+}
+
+.modal .input-form::-webkit-scrollbar-thumb:hover {
+    background: #5568d3;
+}
+
+.modal .input-form .form-group {
+    margin-bottom: 20px; /* Ensure spacing */
+    flex-shrink: 0;
+}
+
+.modal .form-actions {
+    background: white;
+    padding: 20px 30px;
+    margin: 0;
+    border-top: 2px solid #e2e8f0;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 10;
+    /* Buttons always visible at bottom of modal - never scrolls */
+    display: flex;
+    gap: 15px;
 }
 
 /* Notification Styles */

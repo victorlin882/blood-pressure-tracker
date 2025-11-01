@@ -234,36 +234,60 @@ class BloodPressureTracker {
 
     // Convert YYYY-MM-DD to dd/mm/yyyy (for edit modal)
     formatDateForEdit(dateStr) {
-        if (!dateStr) return '';
-        // Handle different input formats
-        let date;
-        if (typeof dateStr === 'string') {
-            // If already in YYYY-MM-DD format
-            if (dateStr.includes('-')) {
-                const parts = dateStr.split('-');
-                if (parts.length === 3) {
-                    // Pad day and month to ensure 2 digits
-                    const day = parts[2].padStart(2, '0');
-                    const month = parts[1].padStart(2, '0');
-                    const year = parts[0];
-                    return `${day}/${month}/${year}`; // Convert YYYY-MM-DD to dd/mm/yyyy
-                }
-            }
-            // If already in dd/mm/yyyy format, return as is
-            if (dateStr.includes('/')) {
-                return dateStr;
-            }
-            date = new Date(dateStr);
-        } else if (dateStr instanceof Date) {
-            date = dateStr;
-        } else {
+        if (!dateStr) {
+            console.warn('formatDateForEdit: dateStr is empty/null/undefined');
             return '';
         }
         
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
+        // Trim whitespace
+        dateStr = String(dateStr).trim();
+        
+        // If already in dd/mm/yyyy format, return as is
+        if (dateStr.includes('/') && dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+            console.log('formatDateForEdit: Already in dd/mm/yyyy format', dateStr);
+            return dateStr;
+        }
+        
+        // Handle YYYY-MM-DD format (may include time part, so extract date only)
+        if (dateStr.includes('-')) {
+            // Extract just the date part (before space or T)
+            const datePart = dateStr.split(' ')[0].split('T')[0];
+            const parts = datePart.split('-');
+            
+            if (parts.length === 3) {
+                // Validate parts are numbers
+                const year = parts[0];
+                const month = parts[1];
+                const day = parts[2];
+                
+                if (year && month && day) {
+                    // Pad day and month to ensure 2 digits
+                    const paddedDay = day.padStart(2, '0');
+                    const paddedMonth = month.padStart(2, '0');
+                    const result = `${paddedDay}/${paddedMonth}/${year}`;
+                    console.log('formatDateForEdit: YYYY-MM-DD format converted', dateStr, '->', result);
+                    return result; // Convert YYYY-MM-DD to dd/mm/yyyy
+                }
+            }
+        }
+        
+        // Try parsing as date (fallback for other formats)
+        try {
+            const date = new Date(dateStr);
+            if (!isNaN(date.getTime())) {
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                const result = `${day}/${month}/${year}`;
+                console.log('formatDateForEdit: Date object formatted', dateStr, '->', result);
+                return result;
+            }
+        } catch (e) {
+            console.error('formatDateForEdit: Error parsing date', dateStr, e);
+        }
+        
+        console.error('formatDateForEdit: Could not parse date', dateStr);
+        return '';
     }
 
     // Convert dd/mm/yyyy to YYYY-MM-DD (for database)
@@ -414,13 +438,25 @@ class BloodPressureTracker {
     // Edit a reading
     editReading(id) {
         const reading = this.readings.find(r => r.id === id);
-        if (!reading) return;
+        if (!reading) {
+            console.error('editReading: Reading not found for id', id);
+            return;
+        }
+
+        console.log('editReading: Full reading object', reading);
+        console.log('editReading: reading.inputDate', reading.inputDate, 'type:', typeof reading.inputDate);
 
         document.getElementById('editId').value = reading.id;
         
         // Format date for edit input (dd/mm/yyyy)
         const dateValue = this.formatDateForEdit(reading.inputDate);
-        document.getElementById('editInputDate').value = dateValue;
+        console.log('editReading: Formatted dateValue', dateValue);
+        
+        if (!dateValue) {
+            console.error('editReading: dateValue is empty after formatting');
+        }
+        
+        document.getElementById('editInputDate').value = dateValue || '';
         
         // Format time from HH:MM:SS to HH:MM for time input
         let timeValue = reading.inputTime;
@@ -437,7 +473,29 @@ class BloodPressureTracker {
         document.getElementById('editLowerPressure').value = reading.lowerPressure;
         document.getElementById('editPulseRate').value = reading.pulseRate;
 
-        document.getElementById('editModal').style.display = 'block';
+        // Show modal and prevent body scrolling
+        const modal = document.getElementById('editModal');
+        modal.style.display = 'block';
+        document.body.classList.add('modal-open');
+        
+        // Reset all scroll positions
+        const modalContent = document.querySelector('.modal-content');
+        const formElement = document.getElementById('editForm');
+        
+        if (modalContent) {
+            modalContent.scrollTop = 0;
+        }
+        
+        if (formElement) {
+            formElement.scrollTop = 0;
+        }
+        
+        // Scroll modal container to show the modal (in case it's off screen)
+        setTimeout(() => {
+            modal.scrollTop = 0;
+            // Force a reflow to ensure layout is complete
+            void modal.offsetHeight;
+        }, 50);
     }
 
     // Update a reading
@@ -694,6 +752,7 @@ class BloodPressureTracker {
     // Close the edit modal
     closeModal() {
         document.getElementById('editModal').style.display = 'none';
+        document.body.classList.remove('modal-open');
     }
 
     // Show notification

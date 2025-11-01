@@ -122,8 +122,25 @@ app.get('/api/readings', (req, res) => {
                     const day = String(formattedDate.getDate()).padStart(2, '0');
                     formattedDate = `${year}-${month}-${day}`;
                 } else if (typeof formattedDate === 'string') {
-                    // Ensure it's in YYYY-MM-DD format
+                    // Ensure it's in YYYY-MM-DD format (extract date part only)
                     formattedDate = formattedDate.split(' ')[0].split('T')[0];
+                    // Validate format
+                    if (!formattedDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        console.warn('Warning: Invalid date format from database:', row.input_date, '->', formattedDate);
+                    }
+                } else if (!formattedDate) {
+                    console.error('Error: input_date is null/undefined for reading id:', row.id);
+                    // Fallback to created_at date if input_date is missing
+                    if (row.created_at) {
+                        const fallbackDate = row.created_at instanceof Date ? row.created_at : new Date(row.created_at);
+                        const year = fallbackDate.getFullYear();
+                        const month = String(fallbackDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(fallbackDate.getDate()).padStart(2, '0');
+                        formattedDate = `${year}-${month}-${day}`;
+                        console.log('Using created_at as fallback for input_date:', formattedDate);
+                    } else {
+                        formattedDate = ''; // Will be caught by frontend
+                    }
                 }
                 
                 // Format input_time to string (HH:MM:SS)
