@@ -80,7 +80,8 @@
                 <input type="hidden" id="editId">
                 <div class="form-group">
                     <label for="editInputDate">Date:</label>
-                    <input type="date" id="editInputDate" name="inputDate" required>
+                    <input type="text" id="editInputDate" name="inputDate" placeholder="dd/mm/yyyy" pattern="\d{2}/\d{2}/\d{4}" maxlength="10" required>
+                    <small style="color: #718096; font-size: 0.85rem; margin-top: 4px;">Format: dd/mm/yyyy (e.g., 29/10/2025)</small>
                 </div>
                 
                 <div class="form-group">

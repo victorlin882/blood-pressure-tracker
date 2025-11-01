@@ -223,13 +223,65 @@ class BloodPressureTracker {
         this.focusUpperPressure();
     }
 
-    // Format date as dd/mm/yy
+    // Format date as dd/mm/yy (for display in table)
     formatDate(dateStr) {
         const date = new Date(dateStr);
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = String(date.getFullYear()).slice(-2);
         return `${day}/${month}/${year}`;
+    }
+
+    // Convert YYYY-MM-DD to dd/mm/yyyy (for edit modal)
+    formatDateForEdit(dateStr) {
+        if (!dateStr) return '';
+        // Handle different input formats
+        let date;
+        if (typeof dateStr === 'string') {
+            // If already in YYYY-MM-DD format
+            if (dateStr.includes('-')) {
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                    // Pad day and month to ensure 2 digits
+                    const day = parts[2].padStart(2, '0');
+                    const month = parts[1].padStart(2, '0');
+                    const year = parts[0];
+                    return `${day}/${month}/${year}`; // Convert YYYY-MM-DD to dd/mm/yyyy
+                }
+            }
+            // If already in dd/mm/yyyy format, return as is
+            if (dateStr.includes('/')) {
+                return dateStr;
+            }
+            date = new Date(dateStr);
+        } else if (dateStr instanceof Date) {
+            date = dateStr;
+        } else {
+            return '';
+        }
+        
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+
+    // Convert dd/mm/yyyy to YYYY-MM-DD (for database)
+    parseDateFromEdit(dateStr) {
+        if (!dateStr) return '';
+        // Check if already in YYYY-MM-DD format
+        if (dateStr.includes('-') && dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+            return dateStr;
+        }
+        // Parse dd/mm/yyyy format
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+            const day = parts[0].padStart(2, '0');
+            const month = parts[1].padStart(2, '0');
+            const year = parts[2];
+            return `${year}-${month}-${day}`; // Convert to YYYY-MM-DD
+        }
+        return dateStr; // Return as-is if can't parse
     }
 
     // Format time as hh:mm
@@ -365,10 +417,22 @@ class BloodPressureTracker {
         if (!reading) return;
 
         document.getElementById('editId').value = reading.id;
-        document.getElementById('editInputDate').value = reading.inputDate; // YYYY-MM-DD format
+        
+        // Format date for edit input (dd/mm/yyyy)
+        const dateValue = this.formatDateForEdit(reading.inputDate);
+        document.getElementById('editInputDate').value = dateValue;
+        
         // Format time from HH:MM:SS to HH:MM for time input
-        const timeValue = reading.inputTime.split(':').slice(0, 2).join(':');
+        let timeValue = reading.inputTime;
+        if (typeof timeValue === 'string') {
+            timeValue = timeValue.split(':').slice(0, 2).join(':');
+        } else if (timeValue instanceof Date) {
+            const hours = String(timeValue.getHours()).padStart(2, '0');
+            const minutes = String(timeValue.getMinutes()).padStart(2, '0');
+            timeValue = `${hours}:${minutes}`;
+        }
         document.getElementById('editInputTime').value = timeValue;
+        
         document.getElementById('editUpperPressure').value = reading.upperPressure;
         document.getElementById('editLowerPressure').value = reading.lowerPressure;
         document.getElementById('editPulseRate').value = reading.pulseRate;
@@ -379,13 +443,22 @@ class BloodPressureTracker {
     // Update a reading
     async updateReading() {
         const id = parseInt(document.getElementById('editId').value);
-        const inputDate = document.getElementById('editInputDate').value;
+        const inputDateStr = document.getElementById('editInputDate').value;
         const inputTime = document.getElementById('editInputTime').value;
         const upperPressure = parseInt(document.getElementById('editUpperPressure').value);
         const lowerPressure = parseInt(document.getElementById('editLowerPressure').value);
         const pulseRate = parseInt(document.getElementById('editPulseRate').value);
 
         if (!this.validateInput(upperPressure, lowerPressure, pulseRate)) {
+            return;
+        }
+
+        // Convert dd/mm/yyyy to YYYY-MM-DD for database
+        const inputDate = this.parseDateFromEdit(inputDateStr);
+        
+        // Validate date format
+        if (!inputDate || !inputDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            this.showNotification('Please enter date in dd/mm/yyyy format (e.g., 29/10/2025)', 'error');
             return;
         }
 

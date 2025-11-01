@@ -114,15 +114,39 @@ app.get('/api/readings', (req, res) => {
                     // If it's already a string, use it as-is (should already be in HK time)
                 }
                 
+                // Format input_date to string (YYYY-MM-DD) for frontend
+                let formattedDate = row.input_date;
+                if (formattedDate instanceof Date) {
+                    const year = formattedDate.getFullYear();
+                    const month = String(formattedDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(formattedDate.getDate()).padStart(2, '0');
+                    formattedDate = `${year}-${month}-${day}`;
+                } else if (typeof formattedDate === 'string') {
+                    // Ensure it's in YYYY-MM-DD format
+                    formattedDate = formattedDate.split(' ')[0].split('T')[0];
+                }
+                
+                // Format input_time to string (HH:MM:SS)
+                let formattedTime = row.input_time;
+                if (formattedTime instanceof Date) {
+                    const hours = String(formattedTime.getHours()).padStart(2, '0');
+                    const minutes = String(formattedTime.getMinutes()).padStart(2, '0');
+                    const seconds = String(formattedTime.getSeconds()).padStart(2, '0');
+                    formattedTime = `${hours}:${minutes}:${seconds}`;
+                } else if (typeof formattedTime === 'string') {
+                    // Ensure it's in HH:MM:SS format
+                    formattedTime = formattedTime.split('.')[0]; // Remove milliseconds if present
+                }
+                
                 return {
                     id: row.id,
                     upperPressure: row.upper_pressure,
                     lowerPressure: row.lower_pressure,
                     pulseRate: row.pulse_rate,
-                    inputDate: row.input_date,
-                    inputTime: row.input_time,
+                    inputDate: formattedDate,
+                    inputTime: formattedTime,
                     createdAt: createdAt || null,
-                    dateTime: `${row.input_date} ${row.input_time}`
+                    dateTime: `${formattedDate} ${formattedTime}`
                 };
             });
             
