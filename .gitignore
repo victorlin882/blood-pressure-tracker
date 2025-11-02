@@ -20,3 +20,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Deployment scripts (keep these, they're useful)
+# deploy.ps1
+# deploy.bat

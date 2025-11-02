@@ -41,17 +41,55 @@ const promisePool = pool.promise();
         // Create table if it doesn't exist
         const createTableQuery = `
             CREATE TABLE IF NOT EXISTS blood_pressure (
-                id BIGINT PRIMARY KEY,
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
                 upper_pressure INT NOT NULL,
                 lower_pressure INT NOT NULL,
                 pulse_rate INT NOT NULL,
                 input_date DATE NOT NULL,
                 input_time TIME NOT NULL,
-                created_at DATETIME NOT NULL
+                created_at DATETIME NOT NULL,
+                UNIQUE KEY unique_datetime (input_date, input_time)
             )
         `;
         
         await connection.query(createTableQuery);
+        
+        // Check if table needs migration from old schema
+        const checkIdColumnQuery = `
+            SELECT COLUMN_TYPE, EXTRA
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_SCHEMA = DATABASE() 
+            AND TABLE_NAME = 'blood_pressure' 
+            AND COLUMN_NAME = 'id'
+        `;
+        const [idColumns] = await connection.query(checkIdColumnQuery);
+        
+        if (idColumns.length > 0 && !idColumns[0].EXTRA.includes('auto_increment')) {
+            console.log('Migrating table to use AUTO_INCREMENT id...');
+            // Drop the table and recreate (CAUTION: This deletes data!)
+            // For production, you'd want a proper migration strategy
+            console.log('WARNING: If table has data, it will be lost. Skipping migration.');
+            // Uncomment below to enable migration (use with caution):
+            // await connection.query('DROP TABLE IF EXISTS blood_pressure');
+            // await connection.query(createTableQuery);
+            // console.log('Table migrated to AUTO_INCREMENT id');
+        }
+        
+        // Add unique index if table already existed without it
+        try {
+            await connection.query(`
+                ALTER TABLE blood_pressure 
+                ADD UNIQUE KEY unique_datetime (input_date, input_time)
+            `);
+            console.log('Unique index on (input_date, input_time) added');
+        } catch (err) {
+            // Ignore error if index already exists
+            if (err.code === 'ER_DUP_KEYNAME') {
+                console.log('Unique index on (input_date, input_time) already exists');
+            } else {
+                console.log('Index already exists or other issue, continuing...');
+            }
+        }
         
         // Check if created_at is TIMESTAMP and alter to DATETIME if needed
         const checkColumnQuery = `
@@ -177,7 +215,7 @@ app.get('/api/readings', (req, res) => {
 
 // Add a new reading
 app.post('/api/readings', (req, res) => {
-    const { id, upperPressure, lowerPressure, pulseRate, inputDate, inputTime } = req.body;
+    const { upperPressure, lowerPressure, pulseRate, inputDate, inputTime } = req.body;
     
     // Calculate Hong Kong timestamp for created_at (UTC+8)
     const now = new Date();
@@ -196,22 +234,28 @@ app.post('/api/readings', (req, res) => {
     console.log('Inserting with Hong Kong timestamp:', hkTimestamp);
     
     // Use DATETIME format explicitly - insert as string in Hong Kong time
+    // Note: id is now AUTO_INCREMENT, so we don't include it in INSERT
     const query = `
-        INSERT INTO blood_pressure (id, upper_pressure, lower_pressure, pulse_rate, input_date, input_time, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO blood_pressure (upper_pressure, lower_pressure, pulse_rate, input_date, input_time, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
     `;
     
     promisePool.query("SET time_zone = '+08:00'")
-        .then(() => promisePool.query(query, [id, upperPressure, lowerPressure, pulseRate, inputDate, inputTime, hkTimestamp]))
+        .then(() => promisePool.query(query, [upperPressure, lowerPressure, pulseRate, inputDate, inputTime, hkTimestamp]))
         .then(([result]) => {
             res.status(201).json({ 
                 message: 'Reading added successfully',
-                id: id
+                id: result.insertId  // Return the auto-generated ID
             });
         })
         .catch((err) => {
             console.error('Error adding reading:', err);
-            res.status(500).json({ error: 'Failed to add reading' });
+            // Handle duplicate datetime error
+            if (err.code === 'ER_DUP_ENTRY') {
+                res.status(409).json({ error: 'A reading with this date and time already exists' });
+            } else {
+                res.status(500).json({ error: 'Failed to add reading' });
+            }
         });
 });
 
@@ -235,7 +279,12 @@ app.put('/api/readings/:id', (req, res) => {
         })
         .catch((err) => {
             console.error('Error updating reading:', err);
-            res.status(500).json({ error: 'Failed to update reading' });
+            // Handle duplicate datetime error
+            if (err.code === 'ER_DUP_ENTRY') {
+                res.status(409).json({ error: 'A reading with this date and time already exists' });
+            } else {
+                res.status(500).json({ error: 'Failed to update reading' });
+            }
         });
 });
 

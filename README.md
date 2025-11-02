@@ -40,15 +40,18 @@ The application is configured to use the existing database:
 The table will be created automatically with the following structure:
 ```sql
 CREATE TABLE IF NOT EXISTS blood_pressure (
-    id BIGINT PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     upper_pressure INT NOT NULL,
     lower_pressure INT NOT NULL,
     pulse_rate INT NOT NULL,
     input_date DATE NOT NULL,
     input_time TIME NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL,
+    UNIQUE KEY unique_datetime (input_date, input_time)
 );
 ```
+
+**Note:** The `id` field uses `AUTO_INCREMENT` which automatically generates a unique record number for each entry. This allows the date and time to be edited without affecting the primary key. A unique constraint on `(input_date, input_time)` ensures no duplicate readings for the same date and time.
 
 ### 3. Configure Database Connection
 
@@ -168,6 +171,101 @@ The application is fully responsive and works on:
 
 The interface automatically adapts to different screen sizes for optimal viewing.
 
+## Deployment to Railway
+
+### Quick Deployment (Recommended)
+
+After making changes to your code, use one of the deployment scripts:
+
+#### Option 1: PowerShell Script (Windows)
+```powershell
+.\deploy.ps1
+```
+
+#### Option 2: Batch File (Windows)
+```batch
+deploy.bat
+```
+
+Or with a custom commit message:
+```batch
+deploy.bat "Your commit message here"
+```
+
+#### Option 3: Manual Git Commands
+```bash
+git add .
+git commit -m "Your commit message"
+git push
+```
+
+### Deployment Process
+
+1. **Run the deployment script** or use manual git commands
+2. **Wait 2-3 minutes** for Railway to automatically deploy
+3. **Hard refresh your browser** (Ctrl+F5) to see changes
+4. **Monitor deployment** at https://railway.app
+
+### What Happens
+
+- ✅ Script stages all your changes
+- ✅ Commits with your message
+- ✅ Pushes to GitHub
+- ✅ Railway automatically detects and deploys
+- ✅ Your site updates in 2-3 minutes
+
+### Deployment Scripts Features
+
+**deploy.ps1** (PowerShell):
+- Shows what files changed
+- Prompts for commit message
+- Provides status updates
+- Shows deployment monitoring links
+
+**deploy.bat** (Batch):
+- Simple one-command deployment
+- Can accept commit message as parameter
+- Quick and easy to use
+
+## Database Migration
+
+### Updating from Old Schema
+
+If you're upgrading from an older version that used `Date.now()` for IDs, you'll need to migrate your database:
+
+**⚠️ Important:** Back up your data before migration!
+
+#### Option 1: Drop and Recreate (Fresh Start)
+If you don't mind losing existing data:
+1. Stop the server
+2. In MySQL, drop the old table: `DROP TABLE IF EXISTS blood_pressure;`
+3. Start the server - it will create the new table automatically
+
+#### Option 2: Migrate Existing Data (Preserves Records)
+If you want to keep your existing data, connect to MySQL and run:
+
+```sql
+-- Step 1: Create backup table
+CREATE TABLE blood_pressure_backup AS SELECT * FROM blood_pressure;
+
+-- Step 2: Drop old table
+DROP TABLE blood_pressure;
+
+-- Step 3: The server will auto-create the new table on next start
+```
+
+Then manually re-insert your data (adjust values as needed):
+
+```sql
+INSERT INTO blood_pressure (upper_pressure, lower_pressure, pulse_rate, input_date, input_time, created_at)
+SELECT upper_pressure, lower_pressure, pulse_rate, input_date, input_time, created_at
+FROM blood_pressure_backup;
+
+-- Step 4: Verify and drop backup
+SELECT COUNT(*) FROM blood_pressure; -- Should match original count
+DROP TABLE blood_pressure_backup;
+```
+
 ## Troubleshooting
 
 ### Cannot connect to MySQL
@@ -184,6 +282,14 @@ The interface automatically adapts to different screen sizes for optimal viewing
 - Verify MySQL connection in server terminal output
 - Make sure the database and table exist
 
+### "Date and time cannot be updated" error
+- This was fixed in the latest update with AUTO_INCREMENT primary key
+- Update your database schema as described in the Database Migration section above
+
+### "Duplicate entry" error when adding/editing
+- The system prevents duplicate readings with the same date and time
+- Change the date or time to make it unique
+
 ## Project Structure
 
 ```
@@ -193,6 +299,8 @@ blood-pressure-tracker/
 ├── styles.css          # CSS styling
 ├── server.js           # Backend Node.js server
 ├── package.json        # Project dependencies
+├── deploy.ps1          # PowerShell deployment script
+├── deploy.bat          # Batch file deployment script
 └── README.md          # This file
 ```
 
