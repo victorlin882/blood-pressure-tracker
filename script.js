@@ -259,7 +259,7 @@ class BloodPressureTracker {
         return normalized;
     }
 
-    // Convert YYYY-MM-DD to dd/mm/yyyy (for edit modal)
+    // Normalize date value for the edit modal (YYYY-MM-DD)
     formatDateForEdit(dateStr) {
         if (!dateStr) {
             console.warn('formatDateForEdit: dateStr is empty/null/undefined');
@@ -269,45 +269,41 @@ class BloodPressureTracker {
         // Trim whitespace
         dateStr = String(dateStr).trim();
         
-        // If already in dd/mm/yyyy format, return as is
-        if (dateStr.includes('/') && dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-            console.log('formatDateForEdit: Already in dd/mm/yyyy format', dateStr);
+        // If already in YYYY-MM-DD format, return as is
+        if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
             return dateStr;
         }
         
-        // Handle YYYY-MM-DD format (may include time part, so extract date only)
-        if (dateStr.includes('-')) {
-            // Extract just the date part (before space or T)
-            const datePart = dateStr.split(' ')[0].split('T')[0];
-            const parts = datePart.split('-');
-            
+        // Handle formats that use slashes (dd/mm/yyyy)
+        if (dateStr.includes('/')) {
+            const parts = dateStr.split('/');
             if (parts.length === 3) {
-                // Validate parts are numbers
-                const year = parts[0];
-                const month = parts[1];
-                const day = parts[2];
-                
-                if (year && month && day) {
-                    // Pad day and month to ensure 2 digits
-                    const paddedDay = day.padStart(2, '0');
-                    const paddedMonth = month.padStart(2, '0');
-                    const result = `${paddedDay}/${paddedMonth}/${year}`;
-                    console.log('formatDateForEdit: YYYY-MM-DD format converted', dateStr, '->', result);
-                    return result; // Convert YYYY-MM-DD to dd/mm/yyyy
+                const day = parts[0].padStart(2, '0');
+                const month = parts[1].padStart(2, '0');
+                let year = parts[2];
+                if (year.length === 2) {
+                    year = `20${year}`;
                 }
+                return `${year}-${month}-${day}`;
             }
         }
         
-        // Try parsing as date (fallback for other formats)
+        // Handle strings that include time (e.g., 2025-11-05T00:00:00Z)
+        if (dateStr.includes('-')) {
+            const datePart = dateStr.split(' ')[0].split('T')[0];
+            if (datePart.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                return datePart;
+            }
+        }
+        
+        // Fallback: attempt to parse with Date
         try {
             const date = new Date(dateStr);
             if (!isNaN(date.getTime())) {
-                const day = String(date.getDate()).padStart(2, '0');
-                const month = String(date.getMonth() + 1).padStart(2, '0');
                 const year = date.getFullYear();
-                const result = `${day}/${month}/${year}`;
-                console.log('formatDateForEdit: Date object formatted', dateStr, '->', result);
-                return result;
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
             }
         } catch (e) {
             console.error('formatDateForEdit: Error parsing date', dateStr, e);
@@ -503,7 +499,7 @@ class BloodPressureTracker {
 
         document.getElementById('editId').value = reading.id;
         
-        // Format date for edit input (dd/mm/yyyy)
+        // Format date for edit input (YYYY-MM-DD)
         const dateValue = this.formatDateForEdit(reading.inputDate);
         console.log('editReading: Formatted dateValue', dateValue);
         
@@ -571,7 +567,7 @@ class BloodPressureTracker {
         
         // Validate date format
         if (!inputDate || !inputDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            this.showNotification('Please enter date in dd/mm/yyyy format (e.g., 29/10/2025)', 'error');
+            this.showNotification('Please select a valid date', 'error');
             return;
         }
 
