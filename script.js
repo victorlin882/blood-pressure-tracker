@@ -232,11 +232,31 @@ class BloodPressureTracker {
 
     // Format date as dd/mm/yy (for display in table)
     formatDate(dateStr) {
-        const date = new Date(dateStr);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = String(date.getFullYear()).slice(-2);
-        return `${day}/${month}/${year}`;
+        if (!dateStr) {
+            return '';
+        }
+
+        const normalized = String(dateStr).trim();
+
+        if (normalized.includes('/')) {
+            const parts = normalized.split('/');
+            if (parts.length === 3) {
+                const day = parts[0].padStart(2, '0');
+                const month = parts[1].padStart(2, '0');
+                const year = parts[2];
+                return `${day}/${month}/${String(year).slice(-2)}`;
+            }
+        }
+
+        const datePart = normalized.split(' ')[0].split('T')[0];
+        const segments = datePart.split('-');
+
+        if (segments.length === 3) {
+            const [year, month, day] = segments;
+            return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year.slice(-2)}`;
+        }
+
+        return normalized;
     }
 
     // Convert YYYY-MM-DD to dd/mm/yyyy (for edit modal)
@@ -324,8 +344,36 @@ class BloodPressureTracker {
     // Get day of week
     getDayOfWeek(dateStr) {
         const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const date = new Date(dateStr);
-        return days[date.getDay()];
+        if (!dateStr) {
+            return '';
+        }
+
+        const normalized = String(dateStr).trim();
+        let year, month, day;
+
+        if (normalized.includes('/')) {
+            const parts = normalized.split('/');
+            if (parts.length === 3) {
+                day = parseInt(parts[0], 10);
+                month = parseInt(parts[1], 10);
+                year = parseInt(parts[2], 10);
+            }
+        } else {
+            const datePart = normalized.split(' ')[0].split('T')[0];
+            const segments = datePart.split('-');
+            if (segments.length === 3) {
+                year = parseInt(segments[0], 10);
+                month = parseInt(segments[1], 10);
+                day = parseInt(segments[2], 10);
+            }
+        }
+
+        if (!year || !month || !day) {
+            return '';
+        }
+
+        const utcDate = new Date(Date.UTC(year, month - 1, day));
+        return days[utcDate.getUTCDay()];
     }
 
     // Display reading history
